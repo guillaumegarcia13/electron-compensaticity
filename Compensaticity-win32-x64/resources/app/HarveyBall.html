@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <title>Bullseye or Layered Harvey Ball charts</title>
+    <script src="http://mbostock.github.com/d3/d3.v2.js"></script>
+    <style type="text/css">
+      #app_status_report .vis{
+        display: inline-block; float: left;
+        margin-right: 10px;
+        border: 1px solid black;
+        padding: 5px;
+      }
+      #app_status_report .vis h3{
+        margin: 0;
+        padding: 0;
+        border-bottom: 1px solid silver;
+      }
+      #app_status_report .vis svg{
+      }
+      .key.label{
+        margin: 0;
+        display: block;
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app_status_report"></div>
+    <script type="text/javascript">
+      var primaryDiv = d3.select("#app_status_report");
+      var w = 125,
+          h = w,
+          r = w / 2,
+          x = d3.scale.linear().range([0, 2 * Math.PI]),
+          y = d3.scale.pow().exponent(1.3).domain([0, 1]).range([0, r]),
+          p = 5,
+          duration = 1000,
+          //taken from colorbrewer.Blues[9]
+          colors = ["rgb(8,48,107)", "rgb(33,113,181)", "rgb(107,174,214)"],
+          numColors = colors.length,
+          color = function(idx){
+            return colors[idx%numColors];
+          };
+      d3.json("data.json", function(appData) {
+        var appsData = [
+          {
+            "name":"Test App 1",
+            "children":[
+              {"name":"Configurations","progress":1},
+              {"name":"UI","progress":1},
+              {"name":"Backend","progress":0.25}
+            ]
+          },
+          {
+            "name":"App 2",
+            "children":[
+              {"name":"Configurations","progress":1},
+              {"name":"UI","progress":0.25},
+              {"name":"Backend","progress":0.5}
+            ]
+          }
+        ];
+        var l = appsData.length;
+        for(var idx=0; idx<l; idx++){
+          var div = primaryDiv.append('div')
+              .attr("width", w)
+              .attr('class', 'vis')
+              ;
+          var appSpace = appsData[idx];
+          div.append('h3').text(appSpace.name);
+          var vis = div.append("svg")
+              .attr("width", w)
+              .attr("height", h)
+              .append("g")
+              .attr("transform", "translate(" + (r + p) + "," + (r + p) + ")");
+          for(var k=0; k<appSpace.children.length; k++){
+            div.append('label')
+              .attr('class', 'key label')
+              .text(appSpace.children[k].progress?appSpace.children[k].name+' ('+(appSpace.children[k].progress*100)+'%)':appSpace.children[k].name+' (0%)')
+              .style("background", color(k))//+2))
+              ;
+          }
+          
+          var partition = d3.layout.partition()
+              .sort(null)
+              .value(function(d) { return 5.8 - d.depth; });
+          var nodes = partition.nodes({children: [appSpace]});
+          var slices = nodes.length,
+              sliceSize = r/slices;
+              sliceSizes = [];
+          for(var i=0; i<slices; i++){
+            sliceSizes.push({innerRadius: (i-1)*sliceSize, outerRadius: (i)*sliceSize+1});
+          }
+          var arc = d3.svg.arc()
+              .startAngle(function(d, i) { 
+                return 0;
+                return Math.max(0, Math.min(2 * Math.PI, x(d.x))); 
+              })
+              .endAngle(function(d) { 
+                if(typeof(d.progress)!=='undefined') return d.progress * 2 * Math.PI;
+                else return 0;
+                return Math.max(0, Math.min(2 * Math.PI, x(d.x + d.dx))); 
+              })
+              .innerRadius(function(d, i) { return sliceSizes[i].innerRadius; })
+              .outerRadius(function(d, i) { return sliceSizes[i].outerRadius; });
+          var path = vis.selectAll("path").data(nodes);
+          path.enter().append("path")
+              .attr("id", function(d, i) { return "path-" + i; })
+              .attr("d", arc)
+              .attr("fill-rule", "evenodd")
+              .style("fill", function(d, i){
+                return color(i-2);
+              })
+              ;
+        }
+      });
+      
+      function colour(d) {
+        if (d.children) {
+          // There is a maximum of two children!
+          var colours = d.children.map(colour),
+              a = d3.hsl(colours[0]),
+              b = d3.hsl(colours[1]);
+          // L*a*b* might be better here...
+          return d3.hsl((a.h + b.h) / 2, a.s * 1.2, a.l / 1.2);
+        }
+        return d.colour || "#fff";
+      }
+      // http://www.w3.org/WAI/ER/WD-AERT/#color-contrast
+      function brightness(rgb) {
+        return rgb.r * .299 + rgb.g * .587 + rgb.b * .114;
+      }
+    </script>
+  </body>
+</html>

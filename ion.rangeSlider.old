@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html ng-app="irs">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <title>IOn Range slider</title>  
+    
+    <link href="normalize.css" rel="stylesheet" type="text/css">
+    <link href="ion.rangeSlider.css" rel="stylesheet" type="text/css">
+    <link href="ion.rangeSlider.skinHTML5.css" rel="stylesheet" type="text/css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="ion.rangeSlider.min.js"></script>
+    
+    <script src="angular.min.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/rickshaw/1.5.1/rickshaw.min.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/rickshaw/1.5.1/rickshaw.min.js"></script>
+
+    
+    <script>
+    var graph;
+    var ySal = 100000;
+    var dataSal = [ { x: 1995, y: 38000 }, 
+                    { x: 1996, y: 40000 },
+                    { x: 1997, y: 43000 },
+                    { x: 1998, y: 44000 },
+                    { x: 1999, y: 45000 },
+                    { x: 2000, y: 46000 },
+                    { x: 2001, y: 47000 },
+                    { x: 2002, y: 48000 },
+                    { x: 2003, y: 49000 },
+                    { x: 2004, y: 51000 },
+                    { x: 2005, y: 53000 },
+                    { x: 2006, y: 56000 },
+                    { x: 2007, y: 60000 },
+                    { x: 2008, y: 64000 },
+                    { x: 2009, y: 70000 },
+                    { x: 2010, y: 75000 },
+                    { x: 2011, y: 85000 },
+                    { x: 2012, y: 88000 },
+                    { x: 2013, y: 92000 },
+                    { x: 2014, y: 100000 },
+                    { x: 2015, y: ySal}
+                    ];
+    var yBonus = 50000;                
+    var dataBonus = [ { x: 1995, y: 0 },
+                      { x: 1996, y: 0 },
+                      { x: 1997, y: 0 },
+                      { x: 1998, y: 0 },
+                      { x: 1999, y: 2500 },
+                      { x: 2000, y: 2500 },
+                      { x: 2001, y: 3500 },
+                      { x: 2002, y: 4000 },
+                      { x: 2003, y: 4000 },
+                      { x: 2004, y: 4000 },
+                      { x: 2005, y: 5000 },
+                      { x: 2006, y: 5000 },
+                      { x: 2007, y: 6000 },
+                      { x: 2008, y: 6000 },
+                      { x: 2009, y: 6000 },
+                      { x: 2010, y: 7000 },
+                      { x: 2011, y: 15000 },
+                      { x: 2012, y: 25000 },
+                      { x: 2013, y: 35000 },
+                      { x: 2014, y: 50000 },
+                      { x: 2015, y: yBonus}
+                      ];  
+    </script>
+    
+    <script>
+      var app = angular.module('irs', []);
+      
+      app.controller('demoController', ['$scope', '$filter', function ($scope, $filter) {
+          $scope.amount     = 1978;
+          $scope.salary     = 100000;
+          $scope.bonus      = 50000;
+          $scope.raiseSal;
+          $scope.raiseBonus;
+          
+          $scope.salaryNew = function() {
+            var val = $scope.salary * (1 + ($scope.raiseSal || 0)/100);
+            //return($filter('number')(val, 0);
+            return(val);
+          };
+          $scope.bonusNew = function() {
+            var val = $scope.bonus * (1 + ($scope.raiseBonus || 0)/100);
+            //return($filter('number')(val, 0));
+            return(val);
+          };
+          
+      }]);
+   
+      app.directive('ionRangeSlider', function() {
+          return {
+              restrict: 'E',           // (E)lement
+              require: 'ngModel',
+              // Element template
+              template: '<input type="text" id="{{id}}" name="{{name}}" />',
+              scope: {
+                  id   : '@',
+                  name : '@',
+                  min  : '@',
+                  max  : '@',
+                  from : '@',
+                  to   : '@',
+                  step : '@',
+                  fromMin: '@',
+                  fromMax: '@',
+                  //grid_num: '@',
+                  ngModel: '=ngModel'
+              },
+              // DOM manipulation
+              link: function(scope, elements, attrs, ngModelController) {
+                  // initialization
+                  $("#" + attrs.id).ionRangeSlider({
+                      type: "single",
+                      min: attrs.min,
+                      max: attrs.max,
+                      step: attrs.step,
+                      from: (parseFloat(attrs.fromMin) + parseFloat(attrs.fromMax)) / 2,
+                      //to: attrs.to,
+                      from_min: attrs.fromMin,
+                      from_max: attrs.fromMax,
+                      from_shadow: true,
+                      grid: true,
+                      //grid_num: attrs.grid_num,
+                      force_edges: true,
+                      onChange: function(data) { 
+                        ngModelController.$setViewValue(data.from);
+                      },
+                      onUpdate: function(data) { 
+                        //if (ngModelController.$modelValue != data.from) {    // Infinite loop
+                        //  ngModelController.$setViewValue(data.from);
+                        //} 
+                      }
+                  });
+                  
+                  // Reroute update
+                  scope.update = function(data, oSlider) {
+                    var slider = oSlider || $("#" + attrs.id).data("ionRangeSlider");
+                    slider.update(data);
+                  }
+                  
+                  // Set initial value
+                  var initValue = {from: scope.ngModel ? scope.ngModel : (parseInt(scope.fromMin) + parseInt(scope.fromMax)) / 2};
+                  scope.update(initValue);
+                  ngModelController.$setViewValue(initValue.from);
+                  
+                  // jQuery has completely messed up with the original <input>
+                  // so 2-way data binding is broken
+                  // Set up a watcher to do the work...
+                  scope.$watch('ngModel', function(newVal, oldVal) {
+                    var slider = $("#" + attrs.id).data("ionRangeSlider");
+                    
+                    dataSal[dataSal.length - 1].y     = scope.$parent.salary * (1 + (scope.$parent.raiseSal   || 0)/100);
+                    dataBonus[dataBonus.length - 1].y = scope.$parent.bonus  * (1 + (scope.$parent.raiseBonus || 0)/100);
+                  
+                    graph.update();  
+                    
+                    if (slider.result.from == newVal)
+                      return;
+                      
+                    if (!newVal)
+                      scope.update({from: slider.result.from}, slider);
+                    else 
+                      scope.update({from: newVal}, slider);
+                      
+                        
+                  });
+              }
+          };
+      });
+    </script>
+       
+    <style>
+      @import url(https://fonts.googleapis.com/css?family=Open+Sans);
+      @import url(https://fonts.googleapis.com/css?family=Montserrat);
+    
+      #root {
+        display: block;
+        height: 100px;
+        width: 100%;
+        position: relative;
+      }
+      #container {
+        width: 1200px;
+        margin: auto;
+        position: absolute;
+        top: 0; left: 0; bottom: 0; right: 0;
+      }
+      
+      .bonus .irs-bar {
+        height: 10px;
+        top: 33px;
+        border-top: 1px solid #8F3EE1;
+        border-bottom: 1px solid #8F3EE1;
+        background: #8F3EE1;
+        background: linear-gradient(to top, rgba(143,62,225,1) 0%,rgba(198,164,215,1) 100%);           /* #428BCA > #7FC3E8 */
+      }
+      
+      .bonus .irs-bar-edge {
+        border: 1px solid #8F3EE1;
+        border-right: 0;
+        background: #8F3EE1;
+        background: linear-gradient(to top, rgba(143,62,225,1) 0%,rgba(198,164,215,1) 100%);           /* #428BCA > #7FC3E8 */
+      }
+      
+      .bonus .irs-from, .bonus .irs-to, .bonus .irs-single {
+        background: #8F3EE1;
+      }
+      
+      .people-box {
+        
+      }
+      
+      img {
+        position: absolute;
+        left: 0;
+        top: 0;
+        heigth: 48px;
+        width: 48px;
+        border-radius: 12px;
+      }
+      
+      h2 {
+        margin: 0;
+        margin-left: 58px;
+        color: #6F6F6F;
+        font-family: 'Arial';
+      }
+      h3 {
+        margin: 0;
+        margin-left: 58px;
+        font-size: 12px;     
+        color: #999;         
+        font-family: 'Tahoma';
+        margin-bottom: 20px;
+      }
+      
+      .salary, .bonus {
+        display: inline-block;
+        width: 45%;     
+        margin: 0px 2%;
+        vertical-align: center;
+      }
+      .number {
+        font-family: 'Open Sans', sans-serif;
+        text-align: center;
+        padding: 10px 0px;
+      }
+      .number:after {
+        content: " €";
+      }
+      .number.before {
+        font-size: 16px;
+      }
+      .number.after {
+        font-size: 18px;
+      }
+      .number.total {
+        padding: auto;
+        text-align: center;
+        border-top: 1px dotted #AAA;
+        font-size: 20px;
+        font-weight: bold;
+        width: 100%;
+      }
+      .salary .number {
+        color: black;
+      }
+      .bonus .number {
+        color: #666;
+      }
+      .application {
+        background: linear-gradient(to top, #eee 0%, #fff 100%);
+        border-bottom: 1px dotted #999;
+        padding: 5px 0px 15px 10px;
+        margin-bottom: 20px;
+        text-shadow: 2px 1px #eee;
+      }
+      .application, .five {
+        font-family: 'Montserrat', sans-serif;
+        color: black;
+        font-size: 28px;
+      }
+      .five {
+        background: linear-gradient(to top, rgba(66,139,202,1) 0%,rgba(127,195,232,1) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: bold;
+        text-shadow: none;
+        margin-left: 8px;
+      }
+      
+      .slant {
+          display: inline-block;
+          margin-top: 0px;
+          margin-bottom: 0px;
+          -moz-transform: scale(1) rotate(0deg) translate(0px, 0px) skew(-40deg, 20deg);
+          -webkit-transform: scale(1) rotate(0deg) translate(0px, 0px) skew(-40deg, 20deg);
+          -o-transform: scale(1) rotate(0deg) translate(0px, 0px) skew(-40deg, 20deg);
+          -ms-transform: scale(1) rotate(0deg) translate(0px, 0px) skew(-40deg, 20deg);
+          transform: scale(1) rotate(0deg) translate(0px, 0px) skew(-40deg, 20deg);
+      }
+      
+      .simulation, .history {
+        display: inline-block;
+      }
+      .simulation {
+        position: relative;
+        margin-bottom: 35px;
+        width: 50%;
+        vertical-align: top;
+      }
+      .history {
+        width: 45%;
+        padding: 10px;
+        border: none;
+      }
+      
+      .rewardsCategory {
+        font-size: 14px;
+        color: #666;
+        text-align: center;
+      }
+    </style>
+  <head>
+  
+  <body ng-controller="demoController">
+    <div class="application">
+      Comp Manager <p class="five slant">5</p>
+    </div>
+  
+    <div id="root">
+      <div id="container">
+        <div style="display:none;">
+          <input type="text" id="simpleSlider"   name="simpleSlider" value="1300000" />
+          <input type="text" id="rangeSlider"    name="rangeSlider" value="" />
+          <input type="text" id="complexSlider"  name="complexSlider" value="" />          
+        </div>
+        
+        <div style="display:none;">
+          {{amount}}
+          <input type="text" id="simpleSlider" name="simpleSlider" ng-model="amount" />
+        </div>
+        
+        <div class="people-box">
+          <div class="simulation">
+            <h2>Jean-Paul DENIS</h2>
+            <h3>Supply Chain Corporate Director</h3>
+            <img src="A.jpg">
+            <div>
+              <div class="salary">
+                <div class="rewardsCategory">Salary</div>
+                <div class="number before">{{salary | number:0}}</div>
+                <div class="slider">
+                  <data-ion-range-slider id="angularSliderDPSal" name="angularSliderDPSal"     min="0" max="15" from-min="8" from-max="15" step="0.1" ng-model="raiseSal">
+                  </data-range-slider>
+                </div>
+                <div class="number after">{{salaryNew() | number:0}}</div>
+              </div>
+              <div class="bonus">
+                <div class="rewardsCategory">Bonus</div>
+                <div class="number before">{{bonus | number:0}}</div>
+                <div class="slider">
+                  <data-ion-range-slider id="angularSliderDPBonus" name="angularSliderDPBonus" min="0" max="15" from-min="8" from-max="15" step="0.1" ng-model="raiseBonus">
+                  </data-range-slider>
+                </div>
+                <div class="number after">{{bonusNew() | number:0}}</div>
+              </div>
+            </div>
+            <div class="number total">{{salaryNew() + bonusNew() | number:0}}</div>
+          </div>
+          
+          <div class="history">
+            <!-- Stacked Area chart with annotations using Rickshaw -->
+            <div id="chart"></div>
+            <div id="timeline" style="margin-bottom: 10px;" ></div>
+            <div id="legend" style="background: #fff; color: #000;"></div>
+            
+            <script>
+            graph = new Rickshaw.Graph( {
+              element: document.querySelector("#chart"),
+              renderer: 'area',
+              stroke: true,
+              series: [ {
+                      name: 'Salary',
+                      data: dataSal,
+                      stroke: 'rgba(66,139,202,0.5)',
+                      color: 'rgba(127,195,232,0.5)'
+              }, {    
+                      name: 'Bonus',
+                      data: dataBonus,
+                      stroke: 'rgba(143,62,225,0.5)',
+                      color: 'rgba(198,164,215,0.5)'
+              } ]                     
+            } );
+               
+            var xAxis = new Rickshaw.Graph.Axis.X({
+              graph: graph,
+              orientation: ''
+            }); 
+            
+            var yAxis = new Rickshaw.Graph.Axis.Y({
+              graph: graph,
+              tickFormat: Rickshaw.Fixtures.Number.formatKMBT
+            });
+              
+            var legend = new Rickshaw.Graph.Legend({
+              graph: graph,
+              element: document.querySelector('#legend')
+            }); 
+            var shelving = new Rickshaw.Graph.Behavior.Series.Toggle({
+              graph: graph,
+              legend: legend
+            });
+            var highlighter = new Rickshaw.Graph.Behavior.Series.Highlight({
+              graph: graph,
+              legend: legend
+            });
+             
+            var hoverDetail = new Rickshaw.Graph.HoverDetail( {
+              graph: graph,
+              xFormatter: function(x) { return("Year " + x); },
+              yFormatter: function(y) { return(y.toFixed(0) + " €"); }
+            } );
+               
+            var annotator = new Rickshaw.Graph.Annotate({
+              graph: graph,
+              element: document.getElementById('timeline')
+            });
+           
+            annotator.add('1995', "Hired as Financial Controller");
+            annotator.add('1999', "Moved to Latan area");
+            annotator.add('2007', "Moved to Corporate as VP Supply Chain");
+            annotator.add('2011', "Promoted to Supply Chain Corporate Director");
+            annotator.update();
+            
+            graph.render();
+            </script>
+            
+          </div>
+        </div>
+        
+        <div class="people-box" style="display: none;">
+          <h2>Steve GATES</h2>
+          <h3>IT Manager (Latan area)</h3>
+          <img src="B.jpg">
+          <div class="">
+            <data-ion-range-slider id="angularSliderAR" name="angularSliderAR" min="0" max="15" from_min="5" from_max="7" step="0.1" ng-model="amount">
+            </data-range-slider>
+          </div>
+        </div>
+        <div class="people-box" style="display: none;">
+          <h2>Atsui GORO</h2>
+          <h3>Sales Manager (Japan)</h3>
+          <img src="C.jpg">
+          <div class="">
+            <data-ion-range-slider id="angularSliderEL" name="angularSliderEL" min="0" max="15" from_min="1" from_max="3" step="0.1" ng-model="amount">
+            </data-range-slider>
+          </div>
+        </div>                
+      </div>
+    </div>
+    
+    
+    <script>
+    $("#simpleSlider").ionRangeSlider({
+        type: "single",
+        min: 1000000,
+        max: 2000000,
+        grid: true,
+        force_edges: true
+    });
+    
+    $("#rangeSlider").ionRangeSlider({
+        type: "double",
+        min: 1000000,
+        max: 2000000,
+        grid: true,
+        force_edges: true
+    });
+    
+    $("#complexSlider").ionRangeSlider({
+        type: "single",
+        min: 0,
+        max: 15,
+        step: 1,
+        from: 5,
+        //to: attrs.to,
+        from_min: 10,
+        from_max: 15,
+        from_shadow: true,
+        grid: true,
+        force_edges: true
+    });
+    </script>
+    
+
+  </body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "win" : {
+    "title" : "Compensaticity",
+    "version" : "1.0.0.0",
+    "publisher": "Guillaume GARCIA",
+    "icon" : "assets/win/icon.ico",
+    "verbosity": 1,
+    }
+  }
+}

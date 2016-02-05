@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html ng-app="irs">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <title>Compensaticity 2015</title>  
+    
+    <link href="normalize.css" rel="stylesheet" type="text/css">
+    <link href="ion.rangeSlider.css" rel="stylesheet" type="text/css">
+    <link href="ion.rangeSlider.skinHTML5.css" rel="stylesheet" type="text/css">
+    
+    <script src="jquery.min.js"></script>    
+    <script src="lodash.min.js"></script>
+    
+    <script src="ion.rangeSlider.min.js"></script>
+    
+    <script src="angular.min.js"></script>
+    <script src="intro.js"></script>
+    
+    <link rel="stylesheet" href="rickshaw.min.css">
+    <link href="introjs.css" rel="stylesheet">
+
+    <script src="d3.min.js"></script>
+    <script src="rickshaw.min.js"></script>
+
+    
+    <script>
+    var graph;
+    var graphScatter,
+        employee;
+    
+    var ySal = 100000;
+    var dataSal = [ { x: 1995, y: 38000 }, 
+                    { x: 1996, y: 40000 },
+                    { x: 1997, y: 43000 },
+                    { x: 1998, y: 44000 },
+                    { x: 1999, y: 45000 },
+                    { x: 2000, y: 46000 },
+                    { x: 2001, y: 47000 },
+                    { x: 2002, y: 48000 },
+                    { x: 2003, y: 49000 },
+                    { x: 2004, y: 51000 },
+                    { x: 2005, y: 53000 },
+                    { x: 2006, y: 56000 },
+                    { x: 2007, y: 60000 },
+                    { x: 2008, y: 64000 },
+                    { x: 2009, y: 70000 },
+                    { x: 2010, y: 75000 },
+                    { x: 2011, y: 85000 },
+                    { x: 2012, y: 88000 },
+                    { x: 2013, y: 92000 },
+                    { x: 2014, y: 100000 },
+                    { x: 2015, y: ySal}
+                    ];
+    var yBonus = 50000;                
+    var dataBonus = [ { x: 1995, y: 0 },
+                      { x: 1996, y: 0 },
+                      { x: 1997, y: 0 },
+                      { x: 1998, y: 0 },
+                      { x: 1999, y: 2500 },
+                      { x: 2000, y: 2500 },
+                      { x: 2001, y: 3500 },
+                      { x: 2002, y: 4000 },
+                      { x: 2003, y: 4000 },
+                      { x: 2004, y: 4000 },
+                      { x: 2005, y: 5000 },
+                      { x: 2006, y: 5000 },
+                      { x: 2007, y: 6000 },
+                      { x: 2008, y: 6000 },
+                      { x: 2009, y: 6000 },
+                      { x: 2010, y: 7000 },
+                      { x: 2011, y: 15000 },
+                      { x: 2012, y: 25000 },
+                      { x: 2013, y: 35000 },
+                      { x: 2014, y: 50000 },
+                      { x: 2015, y: yBonus}
+                      ];  
+    </script>
+    
+    <script>
+      var app = angular.module('irs', []);
+      
+      app.controller('demoController', ['$scope', '$filter', function ($scope, $filter) {
+          $scope.amount     = 1978;
+          $scope.salary     = 100000;
+          $scope.bonus      = 50000;
+          $scope.raiseSal   = 10;  
+          $scope.raiseBonus = 15;
+          
+          $scope.salaryNew = function() {
+            var val = $scope.salary * (1 + ($scope.raiseSal || 0)/100);
+            //return($filter('number')(val, 0);
+            return(val);
+          };
+          $scope.bonusNew = function() {
+            var val = $scope.bonus * (1 + ($scope.raiseBonus || 0)/100);
+            //return($filter('number')(val, 0));
+            return(val);
+          };
+          $scope.launchHelp = function() {
+            introJs().start();
+          };
+          
+      }]);
+   
+      app.directive('ionRangeSlider', function() {
+          return {
+              restrict: 'E',           // (E)lement
+              require: 'ngModel',
+              // Element template
+              template: '<input type="text" id="{{id}}" name="{{name}}" />',
+              scope: {
+                  id   : '@',
+                  name : '@',
+                  min  : '@',
+                  max  : '@',
+                  from : '@',
+                  to   : '@',
+                  step : '@',
+                  fromMin: '@',
+                  fromMax: '@',
+                  //grid_num: '@',
+                  ngModel: '=ngModel'
+              },
+              // DOM manipulation
+              link: function(scope, elements, attrs, ngModelController) {
+                  // initialization
+                  $("#" + attrs.id).ionRangeSlider({
+                      type: "single",
+                      min: attrs.min,
+                      max: attrs.max,
+                      step: attrs.step,
+                      from: (parseFloat(attrs.fromMin) + parseFloat(attrs.fromMax)) / 2,
+                      //to: attrs.to,
+                      from_min: attrs.fromMin,
+                      from_max: attrs.fromMax,
+                      from_shadow: true,
+                      grid: true,
+                      //grid_num: attrs.grid_num,
+                      force_edges: true,
+                      onChange: function(data) { 
+                        ngModelController.$setViewValue(data.from);
+                      },
+                      onUpdate: function(data) { 
+                        //if (ngModelController.$modelValue != data.from) {    // Infinite loop
+                        //  ngModelController.$setViewValue(data.from);
+                        //} 
+                      }
+                  });
+                  
+                  // Reroute update
+                  scope.update = function(data, oSlider) {
+                    var slider = oSlider || $("#" + attrs.id).data("ionRangeSlider");
+                    slider.update(data);
+                  }
+                  
+                  // Set initial value
+                  var initValue = {from: scope.ngModel ? scope.ngModel : (parseInt(scope.fromMin) + parseInt(scope.fromMax)) / 2};
+                  scope.update(initValue);
+                  ngModelController.$setViewValue(initValue.from);
+                  
+                  // jQuery has completely messed up with the original <input>
+                  // so 2-way data binding is broken
+                  // Set up a watcher to do the work...
+                  scope.$watch('ngModel', function(newVal, oldVal) {
+                    var slider = $("#" + attrs.id).data("ionRangeSlider");
+                    
+                    dataSal[dataSal.length - 1].y     = scope.$parent.salaryNew();
+                    dataBonus[dataBonus.length - 1].y = scope.$parent.bonusNew();
+                    
+                    // change the salary in the history
+                    var index    = employee[0].x;
+                    var newIndex = seriesData.length + 1;                    
+                    
+                    employee[0].y = scope.$parent.salaryNew() + scope.$parent.bonusNew();    
+                    
+                    _.each(seriesData, function(elt, key) {
+                        if (elt.total > employee[0].y) {
+                            console.log(key);
+                            newIndex = key;
+                            return(false);
+                        }    
+                    });
+                           
+                    employee[0].x = newIndex;     
+                      
+                    // reindexing...  
+                    var low  = _.min([index, newIndex]);
+                    var high = _.max([index, newIndex]);
+                    var move = (newIndex > index) ? -1 : 1;
+                      
+                    _.each(women, function(elt, key) {
+                        if (elt.x >= low && elt.x <= high) {
+                            elt.x = elt.x + move;        
+                        }                            
+                    });    
+                    _.each(men, function(elt, key) {
+                        if (elt.x >= low && elt.x <= high) {
+                            elt.x = elt.x + move;        
+                        }                            
+                    });    
+      
+                    // update both graphs
+                    graph.update();  
+                    graphScatter.update();  
+                      
+                    if (slider.result.from == newVal)
+                      return;
+                      
+                    if (!newVal)
+                      scope.update({from: slider.result.from}, slider);
+                    else 
+                      scope.update({from: newVal}, slider);
+                      
+                        
+                  });
+              }
+          };
+      });
+    </script>
+       
+    <style>
+      @import url(https://fonts.googleapis.com/css?family=Open+Sans);
+      @import url(https://fonts.googleapis.com/css?family=Montserrat);
+    
+      #root {
+        display: block;
+        height: 100px;
+        width: 100%;
+        position: relative;
+      }
+      #container {
+        width: 1200px;
+        margin: auto;
+        position: absolute;
+        top: 0; left: 0; bottom: 0; right: 0;
+      }
+      
+      .bonus .irs-bar {
+        height: 10px;
+        top: 33px;
+        border-top: 1px solid #8F3EE1;
+        border-bottom: 1px solid #8F3EE1;
+        background: #8F3EE1;
+        background: linear-gradient(to top, rgba(143,62,225,1) 0%,rgba(198,164,215,1) 100%);           /* #428BCA > #7FC3E8 */
+      }
+      
+      .bonus .irs-bar-edge {
+        border: 1px solid #8F3EE1;
+        border-right: 0;
+        background: #8F3EE1;
+        background: linear-gradient(to top, rgba(143,62,225,1) 0%,rgba(198,164,215,1) 100%);           /* #428BCA > #7FC3E8 */
+      }
+      
+      .bonus .irs-from, .bonus .irs-to, .bonus .irs-single {
+        background: #8F3EE1;
+      }
+      
+      .people-box {
+        
+      }
+      
+      img {
+        position: absolute;
+        left: 0;
+        top: 0;
+        heigth: 48px;
+        width: 48px;
+        border-radius: 12px;
+      }
+      
+      h2 {
+        margin: 0;
+        margin-left: 58px;
+        color: #6F6F6F;
+        font-family: 'Arial';
+      }
+      h3 {
+        margin: 0;
+        margin-left: 58px;
+        font-size: 12px;     
+        color: #999;         
+        font-family: 'Tahoma';
+        margin-bottom: 20px;
+      }
+      #helpLink {
+        position: absolute;
+        right: 20px;
+        padding: 10px;
+        font-size: 14px;
+        text-decoration: none;
+        color: black;
+        transition: all 250ms linear;
+      }
+      #helpLink:hover {
+        text-decoration: underline;
+        color: rgba(66,139,202,0.8);
+      }
+        
+      .salary, .bonus {
+        display: inline-block;
+        width: 45%;     
+        margin: 0px 2%;
+        vertical-align: center;
+      }
+      .number {
+        font-family: 'Open Sans', sans-serif;
+        text-align: center;
+        padding: 10px 0px;
+      }
+      .number:after {
+        content: " €";
+      }
+      .number.before {
+        font-size: 16px;
+      }
+      .number.after {
+        font-size: 18px;
+      }
+      .number.total {
+        padding: auto;
+        text-align: center;
+        border-top: 1px dotted #AAA;
+        font-size: 20px;
+        font-weight: bold;
+        width: 100%;
+      }
+      .salary .number {
+        color: black;
+      }
+      .bonus .number {
+        color: #666;
+      }
+      .application {
+        background: linear-gradient(to top, #eee 0%, #fff 100%);
+        border-bottom: 1px dotted #999;
+        padding: 5px 0px 15px 10px;
+        margin-bottom: 20px;
+        text-shadow: 2px 1px #eee;
+      }
+      .application, .five {
+        font-family: 'Montserrat', sans-serif;
+        color: black;
+        font-size: 28px;
+      }
+      .five {
+        background: linear-gradient(to top, rgba(66,139,202,1) 0%,rgba(127,195,232,1) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: bold;
+        text-shadow: none;
+        margin-left: 8px;
+      }
+      
+      .slant {
+          display: inline-block;
+          margin-top: 0px;
+          margin-bottom: 0px;
+          -moz-transform: scale(1) rotate(0deg) translate(0px, 0px) skew(-20deg, 10deg);
+          -webkit-transform: scale(1) rotate(0deg) translate(0px, 0px) skew(-20deg, 10deg);
+          -o-transform: scale(1) rotate(0deg) translate(0px, 0px) skew(-20deg, 10deg);
+          -ms-transform: scale(1) rotate(0deg) translate(0px, 0px) skew(-20deg, 10deg);
+          transform: scale(1) rotate(0deg) translate(0px, 0px) skew(-20deg, 10deg);
+      }
+      
+      .simulation, .history {
+        display: inline-block;
+      }
+      .simulation {
+        position: relative;
+        margin-bottom: 35px;
+        width: 50%;
+        vertical-align: top;
+      }
+      .history {
+        width: 45%;
+        padding: 10px;
+        border: none;
+      }
+      
+      .rewardsCategory {
+        font-size: 14px;
+        color: #666;
+        text-align: center;
+      }
+    </style>
+  <head>
+  
+  <body ng-controller="demoController">
+    <div class="application">
+      Compensaticity <p class="five slant">2015</p>
+      <a id="helpLink" href="#" ng-click="launchHelp();">Help</a>  
+    </div>
+  
+    <div id="root">
+      <div id="container">
+        <div class="people-box" >
+          <div class="simulation">
+            <div data-step="1"
+                 data-intro="<b>Jean-Paul DENIS</b><br><em>Un de mes meilleurs collaborateurs...</em><br><br>Comment se positionne-t-il par rapport à une population comparable en termes de salaire et de variable ?">
+              <h2>Jean-Paul DENIS</h2>
+              <h3>Supply Chain Corporate Director</h3>
+              <img src="A.jpg">
+            </div>
+
+            <div data-step="6"
+                 data-intro="Je suis aux commandes désormais, voyons sur quels <b>leviers</b> je peux jouer pour motiver Jean-Paul !">
+              <div class="salary">
+                <div class="rewardsCategory">Salary</div>
+                <div class="number before">{{salary | number:0}}</div>
+                <div class="slider">
+                  <data-ion-range-slider id="angularSliderDPSal" name="angularSliderDPSal"     min="0" max="15" from-min="8" from-max="15" step="0.1" ng-model="raiseSal">
+                  </data-range-slider>
+                </div>
+                <div class="number after">{{salaryNew() | number:0}}</div>
+              </div>
+              <div class="bonus">
+                <div class="rewardsCategory">Bonus</div>
+                <div class="number before">{{bonus | number:0}}</div>
+                <div class="slider">
+                  <data-ion-range-slider id="angularSliderDPBonus" name="angularSliderDPBonus" min="0" max="125" from-min="15" from-max="125" step="0.1" ng-model="raiseBonus">
+                  </data-range-slider>
+                </div>
+                <div class="number after">{{bonusNew() | number:0}}</div>
+              </div>
+            </div>
+            <div class="number total">{{salaryNew() + bonusNew() | number:0}}</div>
+          </div>
+          
+          <div class="history"  
+               data-step="4"
+               data-intro="Je dois prendre en compte les évolutions passées...<br>Jetons un oeil à l'historique">
+            <!-- Stacked Area chart with annotations using Rickshaw -->
+            <div id="chart"></div>
+            <div id="timeline" style="margin-bottom: 10px;"
+                 data-step="5"
+                 data-position="top"
+                 data-intro="Les événements de carrière de Jean-Paul sont retracés dans cette frise"></div>
+            <div id="legend" style="background: #fff; color: #000;"></div>
+            
+            <script>
+            graph = new Rickshaw.Graph( {
+              element: document.querySelector("#chart"),
+              renderer: 'area',
+              stroke: true,
+              series: [ {
+                      name: 'Salary',
+                      data: dataSal,
+                      stroke: 'rgba(66,139,202,0.5)',
+                      color: 'rgba(127,195,232,0.5)'
+              }, {    
+                      name: 'Bonus',
+                      data: dataBonus,
+                      stroke: 'rgba(143,62,225,0.5)',
+                      color: 'rgba(198,164,215,0.5)'
+              } ]                     
+            } );
+               
+            var xAxis = new Rickshaw.Graph.Axis.X({
+              graph: graph,
+              orientation: ''
+            }); 
+            
+            var yAxis = new Rickshaw.Graph.Axis.Y({
+              graph: graph,
+              tickFormat: Rickshaw.Fixtures.Number.formatKMBT
+            });
+              
+            var legend = new Rickshaw.Graph.Legend({
+              graph: graph,
+              element: document.querySelector('#legend')
+            }); 
+            var shelving = new Rickshaw.Graph.Behavior.Series.Toggle({
+              graph: graph,
+              legend: legend
+            });
+            var highlighter = new Rickshaw.Graph.Behavior.Series.Highlight({
+              graph: graph,
+              legend: legend
+            });
+             
+            var hoverDetail = new Rickshaw.Graph.HoverDetail( {
+              graph: graph,
+              xFormatter: function(x) { return("Year " + x); },
+              yFormatter: function(y) { return(y.toFixed(0) + " €"); }
+            } );
+               
+            var annotator = new Rickshaw.Graph.Annotate({
+              graph: graph,
+              element: document.getElementById('timeline')
+            });
+           
+            annotator.add('1995', "Hired as Financial Controller");
+            annotator.add('1999', "Moved to Latan area");
+            annotator.add('2007', "Moved to Corporate as VP Supply Chain");
+            annotator.add('2011', "Promoted to Supply Chain Corporate Director");
+            annotator.update();
+            
+            graph.render();
+            </script>
+            
+          </div>
+        </div>          
+        
+        <div data-step="2"
+             data-intro="Ce graphique montre son positionnement en terme de rémunération globale par homme et femme.<br>Le rond <span style='color: rgba(255,0,0,0.8)'>rouge</span> c'est Jean-Paul">
+          <div id="scatter"></div>
+          <div id="legendScatter" style="background: #fff; color: #000;"
+               data-step="3"
+               data-intro="La légende dynamique sert aussi de filtre homme/femme"></div>
+          
+          <script>
+          // set up our data series with 50 random data points
+          var women = [];
+          var men   = [];
+          employee = [{
+                              "gender":"M",
+                              "id": "JPD",
+                              "first_name":"Jean-Paul",
+                              "last_name":"DENIS",
+                              "total": 167250,  //scope.$parent.salaryNew() + scope.$parent.bonusNew()
+                              x: 62,
+                              y: 167250,
+                              r: 10
+                          }];
+                          
+                            
+           
+          var seriesData = [
+                            {
+                              "gender":"F",
+                              "first_name":"Susan",
+                              "last_name":"Woods",
+                              "total":49678
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Lillian",
+                              "last_name":"King",
+                              "total":50783
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Doris",
+                              "last_name":"Cole",
+                              "total":75452
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Daniel",
+                              "last_name":"Banks",
+                              "total":76119
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Matthew",
+                              "last_name":"Henderson",
+                              "total":90917
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Bobby",
+                              "last_name":"Stone",
+                              "total":93273
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Alan",
+                              "last_name":"Frazier",
+                              "total":101225
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Ralph",
+                              "last_name":"Hanson",
+                              "total":103047
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Rachel",
+                              "last_name":"Scott",
+                              "total":104097
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Craig",
+                              "last_name":"Payne",
+                              "total":108777
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Virginia",
+                              "last_name":"Hamilton",
+                              "total":109327
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Tammy",
+                              "last_name":"Allen",
+                              "total":109633
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Betty",
+                              "last_name":"Watkins",
+                              "total":111772
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Kathryn",
+                              "last_name":"Collins",
+                              "total":112983
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Norma",
+                              "last_name":"Hicks",
+                              "total":113481
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Jean",
+                              "last_name":"Cole",
+                              "total":116283
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Linda",
+                              "last_name":"Austin",
+                              "total":117821
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Judy",
+                              "last_name":"Mendoza",
+                              "total":118291
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Benjamin",
+                              "last_name":"Arnold",
+                              "total":120628
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"David",
+                              "last_name":"Ward",
+                              "total":127144
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Betty",
+                              "last_name":"Fields",
+                              "total":127471
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Patrick",
+                              "last_name":"Cook",
+                              "total":127613
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Julia",
+                              "last_name":"Baker",
+                              "total":130212
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Janice",
+                              "last_name":"Howard",
+                              "total":130387
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Keith",
+                              "last_name":"George",
+                              "total":130584
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Lawrence",
+                              "last_name":"Price",
+                              "total":132421
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Donald",
+                              "last_name":"Bowman",
+                              "total":133553
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Todd",
+                              "last_name":"Bennett",
+                              "total":133645
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Kimberly",
+                              "last_name":"Howard",
+                              "total":134733
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Amanda",
+                              "last_name":"Griffin",
+                              "total":136889
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Louise",
+                              "last_name":"Fowler",
+                              "total":137469
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Arthur",
+                              "last_name":"Alexander",
+                              "total":137869
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Julie",
+                              "last_name":"Stephens",
+                              "total":138403
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Norma",
+                              "last_name":"Moore",
+                              "total":139754
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Janice",
+                              "last_name":"Warren",
+                              "total":142784
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Albert",
+                              "last_name":"Moreno",
+                              "total":143460
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Jimmy",
+                              "last_name":"Roberts",
+                              "total":143867
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Joe",
+                              "last_name":"Marshall",
+                              "total":149541
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Heather",
+                              "last_name":"Duncan",
+                              "total":152528
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Peter",
+                              "last_name":"Cox",
+                              "total":153107
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Martha",
+                              "last_name":"Jordan",
+                              "total":153188
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Rachel",
+                              "last_name":"Nguyen",
+                              "total":153800
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Julia",
+                              "last_name":"Freeman",
+                              "total":155181
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Larry",
+                              "last_name":"Coleman",
+                              "total":155524
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Tammy",
+                              "last_name":"Hughes",
+                              "total":155580
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Aaron",
+                              "last_name":"Campbell",
+                              "total":157000
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Howard",
+                              "last_name":"Dixon",
+                              "total":157800
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Carol",
+                              "last_name":"Olson",
+                              "total":158074
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Janet",
+                              "last_name":"Perry",
+                              "total":158087
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Lisa",
+                              "last_name":"Robinson",
+                              "total":158334
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Jason",
+                              "last_name":"Powell",
+                              "total":158389
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Anna",
+                              "last_name":"Coleman",
+                              "total":159323
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Phillip",
+                              "last_name":"Medina",
+                              "total":160276
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Patrick",
+                              "last_name":"Taylor",
+                              "total":160746
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Joshua",
+                              "last_name":"Perkins",
+                              "total":161646
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Keith",
+                              "last_name":"Phillips",
+                              "total":162687
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"George",
+                              "last_name":"Cunningham",
+                              "total":162707
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Laura",
+                              "last_name":"Berry",
+                              "total":163297
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Denise",
+                              "last_name":"Green",
+                              "total":165517
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Stephanie",
+                              "last_name":"Alvarez",
+                              "total":166127
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Christopher",
+                              "last_name":"George",
+                              "total":166198
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Eugene",
+                              "last_name":"Murphy",
+                              "total":166683
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Nicholas",
+                              "last_name":"Duncan",
+                              "total":168430
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Donald",
+                              "last_name":"Garcia",
+                              "total":170091
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Lisa",
+                              "last_name":"Kennedy",
+                              "total":170171
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Melissa",
+                              "last_name":"Weaver",
+                              "total":170832
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Frank",
+                              "last_name":"Collins",
+                              "total":171110
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Randy",
+                              "last_name":"Gutierrez",
+                              "total":171724
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Christopher",
+                              "last_name":"Ramos",
+                              "total":175492
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Kelly",
+                              "last_name":"Stevens",
+                              "total":179150
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Angela",
+                              "last_name":"Hunt",
+                              "total":180720
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Janet",
+                              "last_name":"Miller",
+                              "total":181931
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Justin",
+                              "last_name":"Green",
+                              "total":181944
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Carlos",
+                              "last_name":"Castillo",
+                              "total":182028
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Angela",
+                              "last_name":"Ramirez",
+                              "total":182113
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Debra",
+                              "last_name":"Morrison",
+                              "total":182352
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Elizabeth",
+                              "last_name":"Carr",
+                              "total":182474
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Carl",
+                              "last_name":"Collins",
+                              "total":182620
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Gerald",
+                              "last_name":"Reynolds",
+                              "total":185809
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Ann",
+                              "last_name":"Greene",
+                              "total":187015
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Stephen",
+                              "last_name":"Stone",
+                              "total":189197
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Walter",
+                              "last_name":"Knight",
+                              "total":189217
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Theresa",
+                              "last_name":"Woods",
+                              "total":190064
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Kevin",
+                              "last_name":"Daniels",
+                              "total":193270
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Benjamin",
+                              "last_name":"Ramos",
+                              "total":194261
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Catherine",
+                              "last_name":"Ford",
+                              "total":195315
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Stephen",
+                              "last_name":"Martinez",
+                              "total":196096
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Jerry",
+                              "last_name":"Perry",
+                              "total":197967
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Debra",
+                              "last_name":"Gomez",
+                              "total":198559
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Jeffrey",
+                              "last_name":"Daniels",
+                              "total":206589
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Rachel",
+                              "last_name":"Johnson",
+                              "total":214218
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Donna",
+                              "last_name":"Garcia",
+                              "total":215377
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Melissa",
+                              "last_name":"Collins",
+                              "total":215644
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Justin",
+                              "last_name":"Williamson",
+                              "total":224755
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Patrick",
+                              "last_name":"Rodriguez",
+                              "total":233331
+                            },
+                            {
+                              "gender":"M",
+                              "first_name":"Timothy",
+                              "last_name":"Williams",
+                              "total":243492
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Norma",
+                              "last_name":"Davis",
+                              "total":251284
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Donna",
+                              "last_name":"Hicks",
+                              "total":256704
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Rebecca",
+                              "last_name":"Diaz",
+                              "total":258397
+                            },
+                            {
+                              "gender":"F",
+                              "first_name":"Jessica",
+                              "last_name":"Gilbert",
+                              "total":276370
+                            }
+                          ];
+                          
+          
+          _.each(seriesData, function(elt, key) {
+            if (elt.gender === "F")
+              women.push({x: key < 62 ? key : key+1, y: elt.total, name: elt.first_name + " " + elt.last_name});
+            else
+              men.push({x: key < 62 ? key : key+1, y: elt.total, name: elt.first_name + " " + elt.last_name});              
+          });      
+                   
+          // instantiate our graph!
+          graphScatter = new Rickshaw.Graph({
+          	element: document.getElementById("scatter"),
+          	width: 1150,
+          	height: 240,
+          	renderer: 'scatterplot',
+          	series: [
+          		{
+                    name : "Women",
+          			color: 'rgba(255,192,203,0.7)',
+          			data : women
+          		}, {
+          			name : "Men",
+          			color: 'rgba(8,146,208,0.4)',
+          			data : men
+          		}, {
+          			name : "Employee",
+          			color: 'rgba(255,0,0,0.5)',
+          			data : employee
+          		}
+          	]
+          });
+          
+          var xAxisScatter = new Rickshaw.Graph.Axis.X({
+              graph: graphScatter,
+              orientation: ''
+            }); 
+            
+          var yAxisScatter = new Rickshaw.Graph.Axis.Y({
+            graph: graphScatter,
+            tickFormat: Rickshaw.Fixtures.Number.formatKMBT
+          });
+            
+          var legendScatter = new Rickshaw.Graph.Legend({
+            graph: graphScatter,
+            element: document.querySelector('#legendScatter')
+          }); 
+          var shelvingScatter = new Rickshaw.Graph.Behavior.Series.Toggle({
+            graph: graphScatter,
+            legend: legendScatter
+          });
+          var highlighterScatter = new Rickshaw.Graph.Behavior.Series.Highlight({
+            graph: graphScatter,
+            legend: legendScatter
+          });
+          
+          new Rickshaw.Graph.HoverDetail({ 
+            graph: graphScatter,
+            xFormatter: function(x) { return(x); },
+            yFormatter: function(y) { return(y.toFixed(0) + " €"); } 
+          });
+          
+          graphScatter.renderer.dotSize = 6;
+          graphScatter.render();
+  
+          </script>
+        </div>
+              
+      </div>     <!-- container -->          
+    </div>    <!-- root -->
+    
+    
+    <script>
+    $("#simpleSlider").ionRangeSlider({
+        type: "single",
+        min: 1000000,
+        max: 2000000,
+        grid: true,
+        force_edges: true
+    });
+    
+    $("#rangeSlider").ionRangeSlider({
+        type: "double",
+        min: 1000000,
+        max: 2000000,
+        grid: true,
+        force_edges: true
+    });
+    
+    $("#complexSlider").ionRangeSlider({
+        type: "single",
+        min: 0,
+        max: 15,
+        step: 1,
+        from: 5,
+        //to: attrs.to,
+        from_min: 10,
+        from_max: 15,
+        from_shadow: true,
+        grid: true,
+        force_edges: true
+    });
+
+    // Intro.js
+    var introTour = (function(window, $, undefined) {
+      var introComp;
+      
+      var start = function() {
+          introComp = introJs();
+          introComp.setOptions({
+            hints: [{
+                  element: $('#timeline :nth-child(3)')[0],
+                  hint: "Survoler un point pour afficher les détails de l'événement de carrière",
+                  position: 'left'
+              }]
+          });
+          //introComp.addHints();  not satisfying user experience... (badly positioned)
+          introComp.setOption('tooltipPosition', 'auto');
+          introComp.start();
+      };
+        
+        return({start: start});
+    })(window, jQuery);  
+        
+    setTimeout(function() { introTour.start(); }, 2500);
+    </script>
+      
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-73198735-1', 'auto');
+      ga('send', 'pageview');
+    </script>
+    
+
+  </body>
+</html>
